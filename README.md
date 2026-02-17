@@ -35,7 +35,7 @@ Le système génère automatiquement des mots de passe forts (24 caractères) et
 ## Architecture technique
 
 ```
-Frontend (HTML/JS)
+Frontend (ReactJs)
       ↕
 OpenFaaS (Kubernetes / Minikube)
       ↕
@@ -48,7 +48,7 @@ PostgreSQL (base de données)
 | Orchestration   | Kubernetes (Minikube)|
 | Serverless      | OpenFaaS Community   |
 | Base de données | PostgreSQL           |
-| Frontend        | HTML / JS            |
+| Frontend        | ReactJs.             |
 | Package manager | Helm                 |
 | Registry        | Docker Hub           |
 
