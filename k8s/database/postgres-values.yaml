@@ -1,0 +1,10 @@
+auth:
+  postgresPassword: postgres
+  username: cofrap
+  password: cofrap
+  database: cofrapdb
+
+primary:
+  persistence:
+    enabled: true
+    size: 8Gi
