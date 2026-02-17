@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 .vagrant/
 .DS_Store
+**/.DS_Store
