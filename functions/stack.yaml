@@ -1,0 +1,35 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://192.168.49.2:31112
+functions:
+  generate-password:
+    lang: python3-http
+    handler: ./generate-password
+    image: juliemontoux/generate-password:latest
+    secrets:
+      - db-host
+      - db-user
+      - db-password
+      - db-name
+
+  generate-2fa:
+    lang: python3-http
+    handler: ./generate-2fa
+    image: juliemontoux/generate-2fa:latest
+    secrets:
+      - db-host
+      - db-user
+      - db-password
+      - db-name
+
+  authenticate:
+    lang: python3-http
+    handler: ./authenticate
+    image: juliemontoux/authenticate:latest
+    secrets:
+      - db-host
+      - db-user
+      - db-password
+      - db-name
+
