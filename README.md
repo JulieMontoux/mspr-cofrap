@@ -14,7 +14,8 @@ Déploiement d'un système d'authentification sécurisé via OpenFaaS sur Kubern
 5. [Installation — Windows (AMD64)](#installation--windows-amd64)
 6. [Configuration commune de la VM](#configuration-commune-de-la-vm)
 7. [Lancement du script d'installation](#lancement-du-script-dinstallation)
-8. [Structure du projet](#structure-du-projet)
+8. [Réutilisation de l’environnement OpenFaaS](#réutilisation-de-lenvironnement-openfaas)
+9. [Structure du projet](#structure-du-projet)
 
 ---
 
@@ -191,6 +192,80 @@ kubectl get nodes
 helm version
 faas-cli version
 ```
+
+---
+
+## Réutilisation de l’environnement OpenFaaS
+
+⚠️ Cette VM contient déjà :
+
+* OpenFaaS installé
+* PostgreSQL déployé
+* Secrets configurés
+* Table `users` créée
+* Fonctions déployées
+
+Il n’est **pas nécessaire de réinstaller OpenFaaS ou PostgreSQL**.
+
+---
+
+## 🔄 Après un redémarrage de la VM
+
+Il suffit de relancer :
+
+```bash
+minikube start
+```
+
+Vérifier que les pods sont démarrés :
+
+```bash
+kubectl get pods -n openfaas
+kubectl get pods -n openfaas-fn
+```
+
+Attendre que tous les pods soient `Running`.
+
+---
+
+## 🌐 Relancer l’interface OpenFaaS
+
+```bash
+kubectl port-forward --address 0.0.0.0 svc/gateway -n openfaas 8080:8080
+```
+
+Puis ouvrir dans le navigateur :
+
+```
+http://IP_DE_LA_VM:8080
+```
+
+Connexion :
+
+* utilisateur : `admin`
+* mot de passe :
+
+```bash
+echo $(kubectl -n openfaas get secret basic-auth \
+-o jsonpath="{.data.basic-auth-password}" | base64 --decode)
+```
+
+---
+
+## 🧩 Redéployer les fonctions (si besoin)
+
+Depuis le dossier `functions/` :
+
+```bash
+faas-cli login \
+  --username admin \
+  --password VOTRE_MOT_DE_PASSE \
+  --gateway http://127.0.0.1:8080
+
+faas-cli deploy
+```
+
+⚠️ Inutile de refaire `helm install` ou recréer la base de données.
 
 ---
 
