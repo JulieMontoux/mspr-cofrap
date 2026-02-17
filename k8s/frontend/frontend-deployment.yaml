@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mspr-frontend
+  namespace: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mspr-frontend
+  template:
+    metadata:
+      labels:
+        app: mspr-frontend
+    spec:
+      containers:
+        - name: mspr-frontend
+          image: mspr-frontend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80

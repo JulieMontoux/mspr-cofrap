@@ -4,13 +4,16 @@ import bcrypt
 import pyotp
 import time
 
+
 def read_secret(secret_name):
-    with open(f'/var/openfaas/secrets/{secret_name}', 'r') as f:
+    with open(f"/var/openfaas/secrets/{secret_name}", "r") as f:
         return f.read().strip()
+
 
 def handle(event, context):
     try:
         data = json.loads(event.body.decode("utf-8"))
+
         username = data.get("username")
         password = data.get("password")
         otp = data.get("otp")
@@ -21,7 +24,7 @@ def handle(event, context):
                 "body": json.dumps({"error": "username, password and otp are required"})
             }
 
-        # Read DB secrets
+        # 🔐 Read DB secrets
         db_host = read_secret("db-host")
         db_user = read_secret("db-user")
         db_password = read_secret("db-password")
@@ -35,11 +38,18 @@ def handle(event, context):
         )
         cur = conn.cursor()
 
+        # 🔎 Fetch user with safe defaults
         cur.execute("""
-            SELECT password, mfa, gendate, expired
+            SELECT password,
+                   mfa,
+                   gendate,
+                   expired,
+                   COALESCE(failed_attempts, 0),
+                   locked_until
             FROM users
             WHERE username = %s
         """, (username,))
+
         user = cur.fetchone()
 
         if not user:
@@ -49,8 +59,24 @@ def handle(event, context):
                 "body": json.dumps({"error": "user not found"})
             }
 
-        stored_hash, mfa_secret, gendate, expired = user
+        stored_hash = user[0]
+        mfa_secret = user[1]
+        gendate = user[2]
+        expired = user[3]
+        failed_attempts = user[4] or 0
+        locked_until = user[5]
 
+        now = int(time.time())
+
+        # 🔒 Check account lock
+        if locked_until and now < locked_until:
+            conn.close()
+            return {
+                "statusCode": 403,
+                "body": json.dumps({"error": "account temporarily locked"})
+            }
+
+        # 🔒 Check expired flag
         if expired:
             conn.close()
             return {
@@ -58,31 +84,60 @@ def handle(event, context):
                 "body": json.dumps({"error": "password expired"})
             }
 
-        # Check 6 months expiration (approx 180 days)
-        if int(time.time()) - gendate > 60 * 60 * 24 * 180:
+        # 🔒 6-month expiration
+        if gendate and now - gendate > 60 * 60 * 24 * 180:
             conn.close()
             return {
                 "statusCode": 403,
                 "body": json.dumps({"error": "password expired (6 months)"})
             }
 
-        # Verify password
+        # 🔐 Authentication checks
+        auth_failed = False
+
         if not bcrypt.checkpw(password.encode(), stored_hash.encode()):
+            auth_failed = True
+        else:
+            totp = pyotp.TOTP(mfa_secret)
+            if not totp.verify(otp):
+                auth_failed = True
+
+        # ❌ If authentication failed
+        if auth_failed:
+            new_attempts = failed_attempts + 1
+
+            if new_attempts >= 5:
+                lock_time = now + 300  # 5 minutes
+                cur.execute("""
+                    UPDATE users
+                    SET failed_attempts = %s,
+                        locked_until = %s
+                    WHERE username = %s
+                """, (new_attempts, lock_time, username))
+            else:
+                cur.execute("""
+                    UPDATE users
+                    SET failed_attempts = %s
+                    WHERE username = %s
+                """, (new_attempts, username))
+
+            conn.commit()
             conn.close()
+
             return {
                 "statusCode": 401,
-                "body": json.dumps({"error": "invalid password"})
+                "body": json.dumps({"error": "invalid credentials"})
             }
 
-        # Verify OTP
-        totp = pyotp.TOTP(mfa_secret)
-        if not totp.verify(otp):
-            conn.close()
-            return {
-                "statusCode": 401,
-                "body": json.dumps({"error": "invalid otp"})
-            }
+        # ✅ Success → reset attempts
+        cur.execute("""
+            UPDATE users
+            SET failed_attempts = 0,
+                locked_until = NULL
+            WHERE username = %s
+        """, (username,))
 
+        conn.commit()
         conn.close()
 
         return {
@@ -95,4 +150,3 @@ def handle(event, context):
             "statusCode": 500,
             "body": json.dumps({"error": str(e)})
         }
-
