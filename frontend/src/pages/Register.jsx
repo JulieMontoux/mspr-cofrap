@@ -8,23 +8,20 @@ export default function Register() {
   const [error, setError] = useState("");
 
   const handleRegister = async () => {
-    // Reset state
     setError("");
     setPassword("");
     setQrCode("");
 
     try {
-      // Generate password
       const passRes = await api.post("/generate-password", { username });
       const generatedPassword = passRes.data.generated_password;
       setPassword(generatedPassword);
 
-      // Generate 2FA
       const mfaRes = await api.post("/generate-2fa", { username });
       const base64Qr = mfaRes.data.qr_code_base64;
       setQrCode(base64Qr);
 
-      // Auto-hide password after 30 seconds
+      // Auto hide password after 30 seconds
       setTimeout(() => {
         setPassword("");
       }, 30000);
@@ -38,10 +35,14 @@ export default function Register() {
     }
   };
 
-  return (
-    <div className="flex flex-col gap-4">
+return (
+  <div className="relative flex flex-col gap-6">
+
+    {/* Form column */}
+    <div className="flex flex-col gap-6 max-w-sm">
+
       <input
-        className="p-2 rounded bg-slate-700"
+        className="p-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
         placeholder="Username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
@@ -49,38 +50,58 @@ export default function Register() {
 
       <button
         onClick={handleRegister}
-        className="bg-blue-600 hover:bg-blue-700 p-2 rounded"
+        className="py-3 rounded-full bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-black font-medium tracking-wide hover:scale-[1.02] active:scale-[0.98] transition"
       >
         Generate Password
       </button>
 
       {password && (
-        <div className="bg-slate-700 p-3 rounded text-sm break-all">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-400/20 via-purple-400/20 to-cyan-400/20 backdrop-blur border border-white/20 text-sm break-all">
           <strong>Password:</strong> {password}
-          <p className="text-xs mt-2 text-yellow-400">
-            This password will disappear automatically.
-          </p>
-        </div>
-      )}
-
-      {qrCode && (
-        <div className="bg-slate-800 p-4 rounded text-center">
-          <p className="mb-3">
-            Scan with Google Authenticator
-          </p>
-          <img
-            src={`data:image/png;base64,${qrCode}`}
-            alt="2FA QR Code"
-            className="mx-auto"
-          />
         </div>
       )}
 
       {error && (
-        <div className="bg-red-500/20 text-red-400 p-2 rounded text-sm">
+        <div className="p-3 rounded-xl bg-red-400/10 border border-red-400/30 text-red-300 text-sm text-center">
           {error}
         </div>
       )}
+
     </div>
-  );
+
+    {/* QR floating panel (desktop only) */}
+    {qrCode && (
+      <div className="hidden md:block absolute top-0 translate-x-full ml-[8rem]">
+        <div className="p-6 w-64 rounded-2xl bg-white/5 border border-white/10 backdrop-blur text-center shadow-xl animate-fade-in">
+          <p className="mb-4 text-sm uppercase tracking-wide text-cyan-300">
+            Scan with Authenticator
+          </p>
+          <img
+            src={`data:image/png;base64,${qrCode}`}
+            alt="2FA QR Code"
+            className="rounded-lg"
+          />
+        </div>
+      </div>
+    )}
+
+    {/* Mobile QR */}
+    {qrCode && (
+      <div className="md:hidden p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur text-center animate-fade-in">
+        <p className="mb-4 text-sm uppercase tracking-wide text-cyan-300">
+          Scan with Authenticator
+        </p>
+        <img
+          src={`data:image/png;base64,${qrCode}`}
+          alt="2FA QR Code"
+          className="mx-auto rounded-lg"
+        />
+      </div>
+    )}
+
+  </div>
+);
+
+
+
 }

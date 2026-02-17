@@ -6,56 +6,73 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = async () => {
+    setMessage("");
+    setError("");
+
     try {
       const res = await api.post("/authenticate", {
         username,
         password,
         otp,
       });
-      setMessage(res.data.message || "Authenticated");
+
+      setMessage(res.data.message || "Authentication successful");
     } catch (err) {
-      console.log(err);
-      console.log(err.response);
-      console.log(err.response?.data);
-      setMessage(
+      const backendMessage =
         err.response?.data?.error ||
-          JSON.stringify(err.response?.data) ||
-          err.message,
-      );
+        err.response?.data?.message;
+
+      setError(backendMessage || "Authentication failed");
     }
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-5">
+
       <input
-        className="p-2 rounded bg-slate-700"
+        className="p-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
         placeholder="Username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
       />
+
       <input
-        className="p-2 rounded bg-slate-700"
+        type="password"
+        className="p-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
+
       <input
-        className="p-2 rounded bg-slate-700"
-        placeholder="OTP"
+        className="p-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
+        placeholder="OTP Code"
         value={otp}
         onChange={(e) => setOtp(e.target.value)}
       />
 
       <button
         onClick={handleLogin}
-        className="bg-blue-600 hover:bg-blue-700 p-2 rounded"
+        className="py-3 rounded-full bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 text-black font-medium tracking-wide hover:scale-[1.02] active:scale-[0.98] transition"
       >
         Authenticate
       </button>
 
-      {message && <p className="text-center mt-2 text-sm">{message}</p>}
+      {message && (
+        <div className="p-3 rounded-xl bg-green-400/10 border border-green-400/30 text-green-300 text-sm text-center">
+          {message}
+        </div>
+      )}
+
+      {error && (
+        <div className="p-3 rounded-xl bg-red-400/10 border border-red-400/30 text-red-300 text-sm text-center">
+          {error}
+        </div>
+      )}
+
     </div>
   );
 }
