@@ -24,7 +24,6 @@ def handle(event, context):
                 "body": json.dumps({"error": "username, password and otp are required"})
             }
 
-        # 🔐 Read DB secrets
         db_host = read_secret("db-host")
         db_user = read_secret("db-user")
         db_password = read_secret("db-password")
@@ -38,7 +37,6 @@ def handle(event, context):
         )
         cur = conn.cursor()
 
-        # 🔎 Fetch user with safe defaults
         cur.execute("""
             SELECT password,
                    mfa,
@@ -81,15 +79,29 @@ def handle(event, context):
             conn.close()
             return {
                 "statusCode": 403,
-                "body": json.dumps({"error": "password expired"})
+                "body": json.dumps({
+                    "error": "credentials_expired",
+                    "message": "Your credentials have expired. Please renew your password and 2FA.",
+                    "action": "renew"
+                })
             }
 
         # 🔒 6-month expiration
         if gendate and now - gendate > 60 * 60 * 24 * 180:
+            cur.execute("""
+                UPDATE users
+                SET expired = true
+                WHERE username = %s
+            """, (username,))
+            conn.commit()
             conn.close()
             return {
                 "statusCode": 403,
-                "body": json.dumps({"error": "password expired (6 months)"})
+                "body": json.dumps({
+                    "error": "credentials_expired",
+                    "message": "Your credentials have expired. Please renew your password and 2FA.",
+                    "action": "renew"
+                })
             }
 
         # 🔐 Authentication checks
