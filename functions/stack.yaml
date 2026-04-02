@@ -1,7 +1,7 @@
 version: 1.0
 provider:
   name: openfaas
-  gateway: http://192.168.49.2:31112
+  gateway: http://127.0.0.1:8080
 functions:
   generate-password:
     lang: python3-http
