@@ -2,11 +2,21 @@ import string
 import secrets
 import json
 import time
+import re
 import psycopg2
 import bcrypt
 import qrcode
 import io
 import base64
+
+USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{3,32}$')
+
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
+
 
 def generate_strong_password(length=24):
     uppercase = string.ascii_uppercase
@@ -24,11 +34,16 @@ def generate_strong_password(length=24):
     secrets.SystemRandom().shuffle(password)
     return ''.join(password)
 
+
 def read_secret(secret_name):
     with open(f'/var/openfaas/secrets/{secret_name}', 'r') as f:
         return f.read().strip()
 
+
 def handle(event, context):
+    if event.method == "OPTIONS":
+        return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
+
     try:
         data = json.loads(event.body.decode("utf-8"))
         username = data.get("username")
@@ -36,24 +51,31 @@ def handle(event, context):
         if not username:
             return {
                 "statusCode": 400,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({"error": "username is required"})
+            }
+
+        if not USERNAME_RE.match(username):
+            return {
+                "statusCode": 400,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({
+                    "error": "username must be 3-32 characters (letters, digits, _ or -)"
+                })
             }
 
         password_plain = generate_strong_password()
 
-        # Hash password
         password_hash = bcrypt.hashpw(
             password_plain.encode("utf-8"),
             bcrypt.gensalt()
         ).decode("utf-8")
 
-        # Generate QR code from password
         qr = qrcode.make(password_plain)
         buffered = io.BytesIO()
         qr.save(buffered, format="PNG")
         qr_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-        # Read DB secrets
         db_host = read_secret("db-host")
         db_user = read_secret("db-user")
         db_password = read_secret("db-password")
@@ -68,26 +90,25 @@ def handle(event, context):
         cur = conn.cursor()
 
         cur.execute("SELECT id FROM users WHERE username = %s", (username,))
-        existing_user = cur.fetchone()
-
-        if existing_user:
+        if cur.fetchone():
             conn.close()
             return {
                 "statusCode": 409,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({"error": "username already exists"})
             }
 
-        cur.execute("""
-            INSERT INTO users (username, password, gendate, expired)
-            VALUES (%s, %s, %s, %s)
-        """, (username, password_hash, int(time.time()), False))
-
+        cur.execute(
+            "INSERT INTO users (username, password, gendate, expired) VALUES (%s, %s, %s, %s)",
+            (username, password_hash, int(time.time()), False)
+        )
         conn.commit()
         cur.close()
         conn.close()
 
         return {
             "statusCode": 200,
+            "headers": CORS_HEADERS,
             "body": json.dumps({
                 "username": username,
                 "generated_password": password_plain,
@@ -98,5 +119,6 @@ def handle(event, context):
     except Exception as e:
         return {
             "statusCode": 500,
+            "headers": CORS_HEADERS,
             "body": json.dumps({"error": str(e)})
         }

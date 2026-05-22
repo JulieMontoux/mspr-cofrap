@@ -7,8 +7,9 @@ VALID = {"username": "alice", "password": "pwd", "otp": "123456"}
 
 
 class FakeEvent:
-    def __init__(self, data):
+    def __init__(self, data, method="POST"):
         self.body = json.dumps(data).encode("utf-8")
+        self.method = method
 
 
 def _mock_db(row):
@@ -21,8 +22,29 @@ def _mock_db(row):
 
 class TestAuthenticate(unittest.TestCase):
 
-    def _event(self, data=None):
-        return FakeEvent(data if data is not None else VALID)
+    def _event(self, data=None, method="POST"):
+        return FakeEvent(data if data is not None else VALID, method)
+
+    # ── CORS ─────────────────────────────────────────────────────
+
+    def test_options_returns_200(self):
+        res = handler.handle(self._event({}, method="OPTIONS"), None)
+        self.assertEqual(res["statusCode"], 200)
+        self.assertIn("Access-Control-Allow-Origin", res["headers"])
+
+    @patch.object(handler, "read_secret", return_value="x")
+    @patch.object(handler, "psycopg2")
+    @patch.object(handler, "bcrypt")
+    @patch.object(handler, "pyotp")
+    @patch.object(handler, "time")
+    def test_success_response_includes_cors_header(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, _):
+        mock_time.time.return_value = 1000
+        conn, cur = _mock_db(("hash", "secret", 500, False, 0, None))
+        mock_pg.connect.return_value = conn
+        mock_bcrypt.checkpw.return_value = True
+        mock_pyotp.TOTP.return_value.verify.return_value = True
+        res = handler.handle(self._event(), None)
+        self.assertIn("Access-Control-Allow-Origin", res["headers"])
 
     # ── Input validation ─────────────────────────────────────────
 
@@ -51,7 +73,6 @@ class TestAuthenticate(unittest.TestCase):
     @patch.object(handler, "time")
     def test_locked_account_returns_403(self, mock_time, mock_pg, _):
         mock_time.time.return_value = 1000
-        # locked_until=2000 is in the future relative to now=1000
         conn, cur = _mock_db(("hash", "secret", 0, False, 0, 2000))
         mock_pg.connect.return_value = conn
         res = handler.handle(self._event(), None)
@@ -98,6 +119,22 @@ class TestAuthenticate(unittest.TestCase):
         res = handler.handle(self._event(), None)
         self.assertEqual(res["statusCode"], 200)
 
+    # ── Incomplete registration ───────────────────────────────────
+
+    @patch.object(handler, "read_secret", return_value="x")
+    @patch.object(handler, "psycopg2")
+    @patch.object(handler, "time")
+    def test_missing_mfa_secret_returns_403_with_renew(self, mock_time, mock_pg, _):
+        mock_time.time.return_value = 1000
+        # mfa=None: password generated but 2FA setup not completed
+        conn, cur = _mock_db(("hash", None, 500, False, 0, None))
+        mock_pg.connect.return_value = conn
+        res = handler.handle(self._event(), None)
+        self.assertEqual(res["statusCode"], 403)
+        body = json.loads(res["body"])
+        self.assertEqual(body["error"], "account_setup_incomplete")
+        self.assertEqual(body["action"], "renew")
+
     # ── Authentication failures ──────────────────────────────────
 
     @patch.object(handler, "read_secret", return_value="x")
@@ -135,7 +172,6 @@ class TestAuthenticate(unittest.TestCase):
     @patch.object(handler, "time")
     def test_5th_failure_sets_locked_until(self, mock_time, mock_bcrypt, mock_pg, _):
         mock_time.time.return_value = 1000
-        # failed_attempts=4 → this attempt is the 5th
         conn, cur = _mock_db(("hash", "secret", 500, False, 4, None))
         mock_pg.connect.return_value = conn
         mock_bcrypt.checkpw.return_value = False
@@ -149,7 +185,6 @@ class TestAuthenticate(unittest.TestCase):
     @patch.object(handler, "time")
     def test_4th_failure_does_not_set_locked_until(self, mock_time, mock_bcrypt, mock_pg, _):
         mock_time.time.return_value = 1000
-        # failed_attempts=3 → this attempt is the 4th, not yet locked
         conn, cur = _mock_db(("hash", "secret", 500, False, 3, None))
         mock_pg.connect.return_value = conn
         mock_bcrypt.checkpw.return_value = False

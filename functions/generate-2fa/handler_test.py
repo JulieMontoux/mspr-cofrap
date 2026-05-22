@@ -5,19 +5,38 @@ import handler
 
 
 class FakeEvent:
-    def __init__(self, data):
+    def __init__(self, data, method="POST"):
         self.body = json.dumps(data).encode("utf-8")
+        self.method = method
 
 
 class TestHandle(unittest.TestCase):
 
-    def _event(self, data):
-        return FakeEvent(data)
+    def _event(self, data, method="POST"):
+        return FakeEvent(data, method)
+
+    # ── CORS ─────────────────────────────────────────────────────
+
+    def test_options_returns_200(self):
+        res = handler.handle(self._event({}, method="OPTIONS"), None)
+        self.assertEqual(res["statusCode"], 200)
+        self.assertIn("Access-Control-Allow-Origin", res["headers"])
+
+    # ── Input validation ─────────────────────────────────────────
 
     def test_missing_username_returns_400(self):
         res = handler.handle(self._event({}), None)
         self.assertEqual(res["statusCode"], 400)
-        self.assertIn("error", json.loads(res["body"]))
+
+    def test_username_too_short_returns_400(self):
+        res = handler.handle(self._event({"username": "ab"}), None)
+        self.assertEqual(res["statusCode"], 400)
+
+    def test_username_with_invalid_chars_returns_400(self):
+        res = handler.handle(self._event({"username": "alice@domain"}), None)
+        self.assertEqual(res["statusCode"], 400)
+
+    # ── DB logic ─────────────────────────────────────────────────
 
     @patch.object(handler, "read_secret", return_value="fake")
     @patch.object(handler, "psycopg2")

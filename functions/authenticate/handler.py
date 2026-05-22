@@ -4,6 +4,12 @@ import bcrypt
 import pyotp
 import time
 
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
+
 
 def read_secret(secret_name):
     with open(f"/var/openfaas/secrets/{secret_name}", "r") as f:
@@ -11,6 +17,9 @@ def read_secret(secret_name):
 
 
 def handle(event, context):
+    if event.method == "OPTIONS":
+        return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
+
     try:
         data = json.loads(event.body.decode("utf-8"))
 
@@ -21,6 +30,7 @@ def handle(event, context):
         if not username or not password or not otp:
             return {
                 "statusCode": 400,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({"error": "username, password and otp are required"})
             }
 
@@ -54,31 +64,29 @@ def handle(event, context):
             conn.close()
             return {
                 "statusCode": 404,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({"error": "user not found"})
             }
 
-        stored_hash = user[0]
-        mfa_secret = user[1]
-        gendate = user[2]
-        expired = user[3]
-        failed_attempts = user[4] or 0
-        locked_until = user[5]
-
+        stored_hash, mfa_secret, gendate, expired, failed_attempts, locked_until = user
+        failed_attempts = failed_attempts or 0
         now = int(time.time())
 
-        # 🔒 Check account lock
+        # Account lock
         if locked_until and now < locked_until:
             conn.close()
             return {
                 "statusCode": 403,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({"error": "account temporarily locked"})
             }
 
-        # 🔒 Check expired flag
+        # Expired flag
         if expired:
             conn.close()
             return {
                 "statusCode": 403,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({
                     "error": "credentials_expired",
                     "message": "Your credentials have expired. Please renew your password and 2FA.",
@@ -86,17 +94,14 @@ def handle(event, context):
                 })
             }
 
-        # 🔒 6-month expiration
+        # 6-month expiration
         if gendate and now - gendate > 60 * 60 * 24 * 180:
-            cur.execute("""
-                UPDATE users
-                SET expired = true
-                WHERE username = %s
-            """, (username,))
+            cur.execute("UPDATE users SET expired = true WHERE username = %s", (username,))
             conn.commit()
             conn.close()
             return {
                 "statusCode": 403,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({
                     "error": "credentials_expired",
                     "message": "Your credentials have expired. Please renew your password and 2FA.",
@@ -104,61 +109,68 @@ def handle(event, context):
                 })
             }
 
-        # 🔐 Authentication checks
+        # Incomplete registration: 2FA not set up yet
+        if not mfa_secret:
+            conn.close()
+            return {
+                "statusCode": 403,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({
+                    "error": "account_setup_incomplete",
+                    "message": "2FA setup not completed. Please register again.",
+                    "action": "renew"
+                })
+            }
+
+        # Authentication checks
         auth_failed = False
 
         if not bcrypt.checkpw(password.encode(), stored_hash.encode()):
             auth_failed = True
         else:
-            totp = pyotp.TOTP(mfa_secret)
-            if not totp.verify(otp):
+            if not pyotp.TOTP(mfa_secret).verify(otp):
                 auth_failed = True
 
-        # ❌ If authentication failed
         if auth_failed:
             new_attempts = failed_attempts + 1
 
             if new_attempts >= 5:
-                lock_time = now + 300  # 5 minutes
-                cur.execute("""
-                    UPDATE users
-                    SET failed_attempts = %s,
-                        locked_until = %s
-                    WHERE username = %s
-                """, (new_attempts, lock_time, username))
+                cur.execute(
+                    "UPDATE users SET failed_attempts = %s, locked_until = %s WHERE username = %s",
+                    (new_attempts, now + 300, username)
+                )
             else:
-                cur.execute("""
-                    UPDATE users
-                    SET failed_attempts = %s
-                    WHERE username = %s
-                """, (new_attempts, username))
+                cur.execute(
+                    "UPDATE users SET failed_attempts = %s WHERE username = %s",
+                    (new_attempts, username)
+                )
 
             conn.commit()
             conn.close()
 
             return {
                 "statusCode": 401,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({"error": "invalid credentials"})
             }
 
-        # ✅ Success → reset attempts
-        cur.execute("""
-            UPDATE users
-            SET failed_attempts = 0,
-                locked_until = NULL
-            WHERE username = %s
-        """, (username,))
-
+        # Success — reset attempts
+        cur.execute(
+            "UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE username = %s",
+            (username,)
+        )
         conn.commit()
         conn.close()
 
         return {
             "statusCode": 200,
+            "headers": CORS_HEADERS,
             "body": json.dumps({"message": "authentication successful"})
         }
 
     except Exception as e:
         return {
             "statusCode": 500,
+            "headers": CORS_HEADERS,
             "body": json.dumps({"error": str(e)})
         }

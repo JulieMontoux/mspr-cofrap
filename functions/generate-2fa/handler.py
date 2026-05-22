@@ -1,16 +1,29 @@
 import json
-import os
+import re
 import psycopg2
 import pyotp
 import qrcode
 import io
 import base64
 
+USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{3,32}$')
+
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
+
+
 def read_secret(secret_name):
     with open(f'/var/openfaas/secrets/{secret_name}', 'r') as f:
         return f.read().strip()
 
+
 def handle(event, context):
+    if event.method == "OPTIONS":
+        return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
+
     try:
         data = json.loads(event.body.decode("utf-8"))
         username = data.get("username")
@@ -18,10 +31,19 @@ def handle(event, context):
         if not username:
             return {
                 "statusCode": 400,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({"error": "username is required"})
             }
 
-        # Read DB secrets
+        if not USERNAME_RE.match(username):
+            return {
+                "statusCode": 400,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({
+                    "error": "username must be 3-32 characters (letters, digits, _ or -)"
+                })
+            }
+
         db_host = read_secret("db-host")
         db_user = read_secret("db-user")
         db_password = read_secret("db-password")
@@ -35,34 +57,22 @@ def handle(event, context):
         )
         cur = conn.cursor()
 
-        # Check if user exists
         cur.execute("SELECT id FROM users WHERE username = %s", (username,))
-        user = cur.fetchone()
-
-        if not user:
+        if not cur.fetchone():
             conn.close()
             return {
                 "statusCode": 404,
+                "headers": CORS_HEADERS,
                 "body": json.dumps({"error": "user not found"})
             }
 
-        # Generate TOTP secret
         totp_secret = pyotp.random_base32()
-
-        # Save secret in DB
-        cur.execute("""
-            UPDATE users
-            SET mfa = %s
-            WHERE username = %s
-        """, (totp_secret, username))
-
+        cur.execute("UPDATE users SET mfa = %s WHERE username = %s", (totp_secret, username))
         conn.commit()
 
-        # Generate provisioning URI
         totp = pyotp.TOTP(totp_secret)
         uri = totp.provisioning_uri(name=username, issuer_name="MSPR-Cofrap")
 
-        # Generate QR Code
         qr = qrcode.make(uri)
         buffered = io.BytesIO()
         qr.save(buffered, format="PNG")
@@ -73,6 +83,7 @@ def handle(event, context):
 
         return {
             "statusCode": 200,
+            "headers": CORS_HEADERS,
             "body": json.dumps({
                 "username": username,
                 "qr_code_base64": qr_base64
@@ -82,5 +93,6 @@ def handle(event, context):
     except Exception as e:
         return {
             "statusCode": 500,
+            "headers": CORS_HEADERS,
             "body": json.dumps({"error": str(e)})
         }
