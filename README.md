@@ -42,15 +42,17 @@ OpenFaaS (Kubernetes / Minikube)
 PostgreSQL (base de données)
 ```
 
-| Composant       | Technologie          |
-|-----------------|----------------------|
-| Fonctions       | Python 3             |
-| Orchestration   | Kubernetes (Minikube)|
-| Serverless      | OpenFaaS Community   |
-| Base de données | PostgreSQL           |
-| Frontend        | ReactJs.             |
-| Package manager | Helm                 |
-| Registry        | Docker Hub           |
+| Composant       | Technologie             |
+|-----------------|-------------------------|
+| Fonctions       | Python 3                |
+| Orchestration   | Kubernetes K3s          |
+| Serverless      | OpenFaaS Community      |
+| Base de données | PostgreSQL              |
+| Frontend        | ReactJs                 |
+| Hyperviseur     | Proxmox                 |
+| Exposition      | Cloudflare Tunnel       |
+| Package manager | Helm                    |
+| Registry        | Docker Hub              |
 
 ---
 
@@ -160,10 +162,13 @@ ip a
 
 ## Lancement du script d'installation
 
-Le script `setup/setup.sh` installe automatiquement tous les outils nécessaires :
+Le script `setup/setup.sh` installe automatiquement les outils pour un **environnement de développement local** :
 **Docker → Minikube → kubectl → Helm → faas-cli**
 
 Il détecte automatiquement l'architecture (ARM64 ou AMD64), le même script fonctionne pour tout le monde.
+
+> **Note :** le déploiement de production tourne sur un cluster **K3s sur Proxmox** avec Cloudflare Tunnel.  
+> La VM de démonstration est déjà configurée — voir la section [Réutilisation de l'environnement OpenFaaS](#réutilisation-de-lenvironnement-openfaas).
 
 ```bash
 # Cloner le repo
@@ -209,35 +214,30 @@ Il n’est **pas nécessaire de réinstaller OpenFaaS ou PostgreSQL**.
 
 ---
 
-## 🔄 Après un redémarrage de la VM
+## 🔄 Après un redémarrage de la VM (production K3s)
 
-Il suffit de relancer :
-
-```bash
-minikube start
-```
-
-Vérifier que les pods sont démarrés :
+K3s démarre automatiquement via systemd. Vérifier que les pods sont opérationnels :
 
 ```bash
 kubectl get pods -n openfaas
 kubectl get pods -n openfaas-fn
 ```
 
-Attendre que tous les pods soient `Running`.
+Attendre que tous les pods soient `Running`. Le tunnel Cloudflare se reconnecte automatiquement.
 
 ---
 
-## 🌐 Relancer l’interface OpenFaaS
+## 🌐 Accéder à l’interface OpenFaaS
+
+**En production (Cloudflare Tunnel) :**
+
+- Frontend : `https://cofrap.webeclosion.dev`
+- Gateway OpenFaaS : `https://openfaas.webeclosion.dev`
+
+**En local (port-forward) :**
 
 ```bash
 kubectl port-forward --address 0.0.0.0 svc/gateway -n openfaas 8080:8080
-```
-
-Puis ouvrir dans le navigateur :
-
-```
-http://IP_DE_LA_VM:8080
 ```
 
 Connexion :
@@ -286,13 +286,9 @@ mspr-cofrap/
 │
 ├── frontend/                 # Interface de démonstration
 │
-├── k8s/                      # Manifests Kubernetes
-│   ├── database/             # Déploiement PostgreSQL
-│   └── openfaas/             # Configuration OpenFaaS
-│
-└── docs/                     # Documentation projet
-    ├── gantt/                # Diagramme de Gantt
-    └── kanban/               # Tableau Kanban
+└── k8s/                      # Manifests Kubernetes
+    ├── database/             # Déploiement PostgreSQL
+    └── openfaas/             # Configuration OpenFaaS
 ```
 
 ---
