@@ -37,7 +37,7 @@ Le système génère automatiquement des mots de passe forts (24 caractères) et
 ```
 Frontend (ReactJs)
       ↕
-OpenFaaS (Kubernetes / Minikube)
+OpenFaaS (Kubernetes K3s / Proxmox)
       ↕
 PostgreSQL (base de données)
 ```
