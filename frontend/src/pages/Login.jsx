@@ -1,6 +1,80 @@
 import { useState } from "react";
 import { api } from "../api";
 
+const CONFETTI_COLORS = ["#f472b6", "#818cf8", "#34d399", "#fbbf24", "#22d3ee", "#f87171"];
+const MESSAGES = [
+  "Accès accordé, le cluster vous salue bien.",
+  "Bravo. K3s est impressionné. (lui au moins)",
+  "Authentifié·e ! Proxmox vous doit un café.",
+  "Connexion réussie — et sans incident Jira. 🎉",
+  "Le jury valide. Le 2FA aussi. Bonne journée.",
+];
+
+function Confetti() {
+  const pieces = Array.from({ length: 18 }, (_, i) => i);
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {pieces.map((i) => (
+        <span
+          key={i}
+          className="absolute w-2 h-2 rounded-sm animate-confetti"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 20}%`,
+            backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            animationDelay: `${Math.random() * 0.8}s`,
+            animationDuration: `${0.9 + Math.random() * 0.8}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function EasterEgg({ onClose }) {
+  const [msg] = useState(() => MESSAGES[Math.floor(Math.random() * MESSAGES.length)]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative text-center p-8 rounded-2xl bg-[#1e293b] border border-white/10 shadow-2xl max-w-xs w-full mx-4 animate-pop-in overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <Confetti />
+
+        {/* dancing emoji */}
+        <div className="text-7xl mb-4 animate-wiggle select-none" role="img" aria-label="danse">
+          🕺
+        </div>
+
+        <h2 className="text-xl font-bold text-white mb-1">
+          Accès accordé !
+        </h2>
+
+        <p className="text-sm text-slate-400 mb-5 leading-relaxed">{msg}</p>
+
+        {/* fake terminal line for extra nerd points */}
+        <div className="mb-5 rounded-lg bg-black/40 border border-white/5 px-4 py-2 text-left font-mono text-xs text-green-400">
+          <span className="text-slate-500">$ </span>
+          kubectl auth can-i do everything<br />
+          <span className="text-green-300">yes</span>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full h-10 rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500
+            text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition duration-200 cursor-pointer"
+        >
+          Je suis impressionné·e, merci
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function EyeIcon({ open }) {
   return open ? (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -36,6 +110,7 @@ export default function Login({ onRenew }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showEgg, setShowEgg] = useState(false);
 
   const handleLogin = async () => {
     if (!username || !password || !otp) {
@@ -48,9 +123,11 @@ export default function Login({ onRenew }) {
 
     try {
       const res = await api.post("/authenticate", { username, password, otp });
-      setMessage(res.data.message === "authentication successful"
+      const msg = res.data.message === "authentication successful"
         ? "Authentification réussie"
-        : res.data.message);
+        : res.data.message;
+      setMessage(msg);
+      setShowEgg(true);
     } catch (err) {
       const data = err.response?.data;
       if (data?.action === "renew") {
@@ -78,6 +155,8 @@ export default function Login({ onRenew }) {
   };
 
   return (
+    <>
+    {showEgg && <EasterEgg onClose={() => setShowEgg(false)} />}
     <div className="flex flex-col gap-5">
       {/* Username */}
       <div className="flex flex-col gap-1.5">
@@ -183,5 +262,6 @@ export default function Login({ onRenew }) {
         </div>
       )}
     </div>
+    </>
   );
 }

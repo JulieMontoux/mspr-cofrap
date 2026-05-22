@@ -76,6 +76,10 @@ export default function Register({ prefillUsername }) {
       setError("Veuillez saisir un nom d'utilisateur.");
       return;
     }
+    if (!/^[a-zA-Z0-9_-]{3,32}$/.test(username)) {
+      setError("Le nom d'utilisateur doit contenir 3 à 32 caractères (lettres, chiffres, _ ou -).");
+      return;
+    }
     setError("");
     setPassword("");
     setPasswordQr("");
