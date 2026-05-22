@@ -274,7 +274,14 @@ faas-cli deploy
 ```
 mspr-cofrap/
 ├── README.md
+├── AMELIORATIONS.md          # Justification des améliorations sécurité
 ├── .gitignore
+│
+├── docs/
+│   ├── MANAGEMENT.md         # Gestion de projet, Gantt, inclusivité, difficultés
+│   ├── PRESENTATION.md       # Plan des slides pour la soutenance (20 min)
+│   ├── gantt.png             # Diagramme de Gantt généré
+│   └── generate_gantt.py     # Script de génération du Gantt
 │
 ├── setup/
 │   └── setup.sh              # Script d'installation Linux (ARM64 + AMD64)
@@ -284,10 +291,13 @@ mspr-cofrap/
 │   ├── generate-2fa/         # Génération secret TOTP + QR code
 │   └── authenticate/         # Authentification utilisateur
 │
-├── frontend/                 # Interface de démonstration
+├── frontend/                 # Interface de démonstration (React + Vite + Tailwind)
+│
+├── tests/
+│   └── test_cluster.sh       # Script de tests d'intégration du cluster
 │
 └── k8s/                      # Manifests Kubernetes
-    ├── database/             # Déploiement PostgreSQL
+    ├── database/             # Déploiement PostgreSQL (StatefulSet)
     └── openfaas/             # Configuration OpenFaaS
 ```
 
