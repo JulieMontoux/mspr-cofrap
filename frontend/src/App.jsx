@@ -17,9 +17,9 @@ export default function App() {
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan-400 opacity-20 blur-3xl rounded-full"></div>
       <div className="relative w-full max-w-md p-10 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
         <h1 className="text-4xl font-light tracking-wide mb-10 text-center">
-          MSPR{" "}
+          COFRAP{" "}
           <span className="font-semibold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-            Secure Auth
+            Authentification
           </span>
         </h1>
         <div className="flex gap-4 mb-10">
@@ -31,7 +31,7 @@ export default function App() {
                 : "bg-white/10 hover:bg-white/20"
             }`}
           >
-            Login
+            Connexion
           </button>
           <button
             onClick={() => setPage("register")}
@@ -41,7 +41,7 @@ export default function App() {
                 : "bg-white/10 hover:bg-white/20"
             }`}
           >
-            Register
+            Inscription
           </button>
         </div>
         {page === "login" && <Login onRenew={handleRenew} />}

@@ -18,7 +18,7 @@ export default function Login({ onRenew }) {
         password,
         otp,
       });
-      setMessage(res.data.message || "Authentication successful");
+      setMessage(res.data.message || "Authentification réussie");
     } catch (err) {
       const data = err.response?.data;
 
@@ -27,7 +27,7 @@ export default function Login({ onRenew }) {
         return;
       }
 
-      setError(data?.error || data?.message || "Authentication failed");
+      setError(data?.error || data?.message || "Échec de l'authentification");
     }
   };
 
@@ -35,20 +35,20 @@ export default function Login({ onRenew }) {
     <div className="flex flex-col gap-5">
       <input
         className="p-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
-        placeholder="Username"
+        placeholder="Nom d'utilisateur"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
       />
       <input
         type="password"
         className="p-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
-        placeholder="Password"
+        placeholder="Mot de passe"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
       <input
         className="p-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
-        placeholder="OTP Code"
+        placeholder="Code OTP"
         value={otp}
         onChange={(e) => setOtp(e.target.value)}
       />
@@ -56,7 +56,7 @@ export default function Login({ onRenew }) {
         onClick={handleLogin}
         className="py-3 rounded-full bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 text-black font-medium tracking-wide hover:scale-[1.02] active:scale-[0.98] transition"
       >
-        Authenticate
+        Se connecter
       </button>
       {message && (
         <div className="p-3 rounded-xl bg-green-400/10 border border-green-400/30 text-green-300 text-sm text-center">

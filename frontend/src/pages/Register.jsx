@@ -30,7 +30,7 @@ export default function Register({ prefillUsername }) {
     } catch (err) {
       const backendMessage =
         err.response?.data?.error || err.response?.data?.message;
-      setError(backendMessage || "Registration failed");
+      setError(backendMessage || "Échec de l'inscription");
     }
   };
 
@@ -39,7 +39,7 @@ export default function Register({ prefillUsername }) {
       <div className="flex flex-col gap-6">
         <input
           className="p-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
-          placeholder="Username"
+          placeholder="Nom d'utilisateur"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
@@ -47,11 +47,11 @@ export default function Register({ prefillUsername }) {
           onClick={handleRegister}
           className="py-3 rounded-full bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 text-black font-medium tracking-wide hover:scale-[1.02] active:scale-[0.98] transition"
         >
-          Generate Password & 2FA
+          Générer mot de passe & 2FA
         </button>
         {password && (
           <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-400/20 via-purple-400/20 to-cyan-400/20 backdrop-blur border border-white/20 text-sm break-all">
-            <strong>Password:</strong> {password}
+            <strong>Mot de passe :</strong> {password}
           </div>
         )}
         {error && (
@@ -67,7 +67,7 @@ export default function Register({ prefillUsername }) {
           {passwordQr && (
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur text-center">
               <p className="mb-2 text-sm uppercase tracking-wide text-pink-300">
-                Password QR Code
+                QR Code — Mot de passe
               </p>
               <img
                 src={`data:image/png;base64,${passwordQr}`}
@@ -79,7 +79,7 @@ export default function Register({ prefillUsername }) {
           {qrCode && (
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur text-center">
               <p className="mb-2 text-sm uppercase tracking-wide text-cyan-300">
-                Scan with Authenticator
+                Scanner avec votre application 2FA
               </p>
               <img
                 src={`data:image/png;base64,${qrCode}`}
