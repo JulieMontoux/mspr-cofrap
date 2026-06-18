@@ -159,7 +159,6 @@ export default function Login({ onRenew }) {
     <>
     {showEgg && <EasterEgg onClose={() => setShowEgg(false)} />}
     <div className="flex flex-col gap-5">
-      {/* Username */}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="login-username" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Nom d'utilisateur
@@ -178,7 +177,6 @@ export default function Login({ onRenew }) {
         />
       </div>
 
-      {/* Password */}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="login-password" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Mot de passe
@@ -206,7 +204,6 @@ export default function Login({ onRenew }) {
         </div>
       </div>
 
-      {/* OTP */}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="login-otp" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Code OTP
@@ -227,7 +224,6 @@ export default function Login({ onRenew }) {
         <p className="text-xs text-slate-500">Code à 6 chiffres depuis votre application 2FA.</p>
       </div>
 
-      {/* Submit */}
       <button
         onClick={handleLogin}
         disabled={loading}
@@ -245,7 +241,6 @@ export default function Login({ onRenew }) {
         )}
       </button>
 
-      {/* Feedback */}
       {message && (
         <div role="status" className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 text-sm animate-fade-in">
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0" aria-hidden="true">

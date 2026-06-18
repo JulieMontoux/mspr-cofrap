@@ -33,15 +33,17 @@ class TestAuthenticate(unittest.TestCase):
         self.assertIn("Access-Control-Allow-Origin", res["headers"])
 
     @patch.object(handler, "read_secret", return_value="x")
+    @patch.object(handler, "Fernet")
     @patch.object(handler, "psycopg2")
     @patch.object(handler, "bcrypt")
     @patch.object(handler, "pyotp")
     @patch.object(handler, "time")
-    def test_success_response_includes_cors_header(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, _):
+    def test_success_response_includes_cors_header(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, mock_fernet, _):
         mock_time.time.return_value = 1000
         conn, cur = _mock_db(("hash", "secret", 500, False, 0, None))
         mock_pg.connect.return_value = conn
         mock_bcrypt.checkpw.return_value = True
+        mock_fernet.return_value.decrypt.return_value = b"DECRYPTEDSECRET"
         mock_pyotp.TOTP.return_value.verify.return_value = True
         res = handler.handle(self._event(), None)
         self.assertIn("Access-Control-Allow-Origin", res["headers"])
@@ -104,17 +106,19 @@ class TestAuthenticate(unittest.TestCase):
         self.assertEqual(json.loads(res["body"])["action"], "renew")
 
     @patch.object(handler, "read_secret", return_value="x")
+    @patch.object(handler, "Fernet")
     @patch.object(handler, "psycopg2")
     @patch.object(handler, "bcrypt")
     @patch.object(handler, "pyotp")
     @patch.object(handler, "time")
-    def test_credentials_at_179_days_are_not_expired(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, _):
+    def test_credentials_at_179_days_are_not_expired(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, mock_fernet, _):
         now = 10_000_000
         gendate_179_days_ago = now - (60 * 60 * 24 * 179)
         mock_time.time.return_value = now
         conn, cur = _mock_db(("hash", "secret", gendate_179_days_ago, False, 0, None))
         mock_pg.connect.return_value = conn
         mock_bcrypt.checkpw.return_value = True
+        mock_fernet.return_value.decrypt.return_value = b"DECRYPTEDSECRET"
         mock_pyotp.TOTP.return_value.verify.return_value = True
         res = handler.handle(self._event(), None)
         self.assertEqual(res["statusCode"], 200)
@@ -151,15 +155,17 @@ class TestAuthenticate(unittest.TestCase):
         self.assertIn("invalid credentials", json.loads(res["body"])["error"])
 
     @patch.object(handler, "read_secret", return_value="x")
+    @patch.object(handler, "Fernet")
     @patch.object(handler, "psycopg2")
     @patch.object(handler, "bcrypt")
     @patch.object(handler, "pyotp")
     @patch.object(handler, "time")
-    def test_wrong_otp_returns_401(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, _):
+    def test_wrong_otp_returns_401(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, mock_fernet, _):
         mock_time.time.return_value = 1000
         conn, cur = _mock_db(("hash", "secret", 500, False, 0, None))
         mock_pg.connect.return_value = conn
         mock_bcrypt.checkpw.return_value = True
+        mock_fernet.return_value.decrypt.return_value = b"DECRYPTEDSECRET"
         mock_pyotp.TOTP.return_value.verify.return_value = False
         res = handler.handle(self._event(), None)
         self.assertEqual(res["statusCode"], 401)
@@ -195,30 +201,34 @@ class TestAuthenticate(unittest.TestCase):
     # ── Successful authentication ────────────────────────────────
 
     @patch.object(handler, "read_secret", return_value="x")
+    @patch.object(handler, "Fernet")
     @patch.object(handler, "psycopg2")
     @patch.object(handler, "bcrypt")
     @patch.object(handler, "pyotp")
     @patch.object(handler, "time")
-    def test_success_returns_200(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, _):
+    def test_success_returns_200(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, mock_fernet, _):
         mock_time.time.return_value = 1000
         conn, cur = _mock_db(("hash", "secret", 500, False, 0, None))
         mock_pg.connect.return_value = conn
         mock_bcrypt.checkpw.return_value = True
+        mock_fernet.return_value.decrypt.return_value = b"DECRYPTEDSECRET"
         mock_pyotp.TOTP.return_value.verify.return_value = True
         res = handler.handle(self._event(), None)
         self.assertEqual(res["statusCode"], 200)
         self.assertIn("successful", json.loads(res["body"])["message"])
 
     @patch.object(handler, "read_secret", return_value="x")
+    @patch.object(handler, "Fernet")
     @patch.object(handler, "psycopg2")
     @patch.object(handler, "bcrypt")
     @patch.object(handler, "pyotp")
     @patch.object(handler, "time")
-    def test_success_resets_failed_attempts_to_zero(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, _):
+    def test_success_resets_failed_attempts_to_zero(self, mock_time, mock_pyotp, mock_bcrypt, mock_pg, mock_fernet, _):
         mock_time.time.return_value = 1000
         conn, cur = _mock_db(("hash", "secret", 500, False, 3, None))
         mock_pg.connect.return_value = conn
         mock_bcrypt.checkpw.return_value = True
+        mock_fernet.return_value.decrypt.return_value = b"DECRYPTEDSECRET"
         mock_pyotp.TOTP.return_value.verify.return_value = True
         handler.handle(self._event(), None)
         last_sql = cur.execute.call_args_list[-1][0][0]
