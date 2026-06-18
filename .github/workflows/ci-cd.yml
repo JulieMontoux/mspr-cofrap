@@ -42,12 +42,12 @@ jobs:
         run: curl -sL https://cli.openfaas.com | sudo sh
 
       - name: Pull template python3-http
-        working-directory: mspr-cofrap/functions
+        working-directory: functions
         run: faas-cli template store pull python3-http
 
       - name: Build & push fonctions (amd64 + arm64)
         if: github.event_name != 'pull_request'
-        working-directory: mspr-cofrap/functions
+        working-directory: functions
         run: |
           faas-cli publish \
             --platforms linux/amd64,linux/arm64 \
@@ -55,14 +55,14 @@ jobs:
 
       - name: Build fonctions (PR — validation uniquement, sans push)
         if: github.event_name == 'pull_request'
-        working-directory: mspr-cofrap/functions
+        working-directory: functions
         run: faas-cli build -f stack.yaml
 
       # ── Frontend React
       - name: Build & push frontend (amd64 + arm64)
         uses: docker/build-push-action@v5
         with:
-          context: mspr-cofrap/frontend
+          context: frontend
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
@@ -127,7 +127,7 @@ jobs:
 
       # ── Déploiement des fonctions
       - name: Deploy fonctions OpenFaaS
-        working-directory: mspr-cofrap/functions
+        working-directory: functions
         run: |
           faas-cli deploy \
             -f stack.yaml \
@@ -136,7 +136,7 @@ jobs:
       # ── Déploiement du frontend
       - name: Apply manifests frontend
         run: |
-          kubectl apply -f mspr-cofrap/k8s/frontend/ -n frontend
+          kubectl apply -f k8s/frontend/ -n frontend
           kubectl rollout restart deployment/mspr-frontend -n frontend
           kubectl rollout status deployment/mspr-frontend -n frontend --timeout=3m
 
