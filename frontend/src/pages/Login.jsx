@@ -1,7 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { api } from "../api";
 
 const CONFETTI_COLORS = ["#f472b6", "#818cf8", "#34d399", "#fbbf24", "#22d3ee", "#f87171"];
+const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
+  id: i,
+  left: `${Math.random() * 100}%`,
+  top: `${Math.random() * 20}%`,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  delay: `${Math.random() * 0.8}s`,
+  duration: `${0.9 + Math.random() * 0.8}s`,
+}));
 const MESSAGES = [
   "Accès accordé, le cluster vous salue bien.",
   "Bravo. K3s est impressionné. (lui au moins)",
@@ -11,19 +19,9 @@ const MESSAGES = [
 ];
 
 function Confetti() {
-  const pieces = useMemo(() =>
-    Array.from({ length: 18 }, (_, i) => ({
-      id: i,
-      left: `${Math.random() * 100}%`,
-      top: `${Math.random() * 20}%`,
-      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-      delay: `${Math.random() * 0.8}s`,
-      duration: `${0.9 + Math.random() * 0.8}s`,
-    })), []);
-
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {pieces.map((p) => (
+      {CONFETTI_PIECES.map((p) => (
         <span
           key={p.id}
           className="absolute w-2 h-2 rounded-sm animate-confetti"
