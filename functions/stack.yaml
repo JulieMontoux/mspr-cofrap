@@ -6,7 +6,7 @@ functions:
   generate-password:
     lang: python3-http
     handler: ./generate-password
-    image: juliemontoux/generate-password:latest
+    image: ghcr.io/juliemontoux/generate-password:latest
     secrets:
       - db-host
       - db-user
@@ -16,20 +16,22 @@ functions:
   generate-2fa:
     lang: python3-http
     handler: ./generate-2fa
-    image: juliemontoux/generate-2fa:latest
+    image: ghcr.io/juliemontoux/generate-2fa:latest
     secrets:
       - db-host
       - db-user
       - db-password
       - db-name
+      - mfa-key
 
   authenticate:
     lang: python3-http
     handler: ./authenticate
-    image: juliemontoux/authenticate:latest
+    image: ghcr.io/juliemontoux/authenticate:latest
     secrets:
       - db-host
       - db-user
       - db-password
       - db-name
+      - mfa-key
 

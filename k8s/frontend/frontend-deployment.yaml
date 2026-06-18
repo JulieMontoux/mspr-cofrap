@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: mspr-frontend
-          image: juliemontoux/mspr-frontend:latest
+          image: ghcr.io/juliemontoux/mspr-frontend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80

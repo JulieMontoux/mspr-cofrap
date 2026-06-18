@@ -3,6 +3,7 @@ import psycopg2
 import bcrypt
 import pyotp
 import time
+from cryptography.fernet import Fernet
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -38,6 +39,7 @@ def handle(event, context):
         db_user = read_secret("db-user")
         db_password = read_secret("db-password")
         db_name = read_secret("db-name")
+        mfa_key = read_secret("mfa-key").encode()
 
         conn = psycopg2.connect(
             host=db_host,
@@ -128,7 +130,9 @@ def handle(event, context):
         if not bcrypt.checkpw(password.encode(), stored_hash.encode()):
             auth_failed = True
         else:
-            if not pyotp.TOTP(mfa_secret).verify(otp):
+            fernet = Fernet(mfa_key)
+            decrypted_secret = fernet.decrypt(mfa_secret.encode()).decode()
+            if not pyotp.TOTP(decrypted_secret).verify(otp):
                 auth_failed = True
 
         if auth_failed:

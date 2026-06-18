@@ -1,0 +1,146 @@
+name: CI/CD — MSPR COFRAP
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  # ──────────────────────────────────────────────
+  # JOB 1 — Build & push toutes les images
+  # Tourne sur chaque push/PR, pousse seulement sur main
+  # ──────────────────────────────────────────────
+  build-push:
+    name: Build & Push images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Fonctions OpenFaaS (faas-cli publish = build+push multi-arch)
+      - name: Install faas-cli
+        run: curl -sL https://cli.openfaas.com | sudo sh
+
+      - name: Pull template python3-http
+        working-directory: mspr-cofrap/functions
+        run: faas-cli template store pull python3-http
+
+      - name: Build & push fonctions (amd64 + arm64)
+        if: github.event_name != 'pull_request'
+        working-directory: mspr-cofrap/functions
+        run: |
+          faas-cli publish \
+            --platforms linux/amd64,linux/arm64 \
+            -f stack.yaml
+
+      - name: Build fonctions (PR — validation uniquement, sans push)
+        if: github.event_name == 'pull_request'
+        working-directory: mspr-cofrap/functions
+        run: faas-cli build -f stack.yaml
+
+      # ── Frontend React
+      - name: Build & push frontend (amd64 + arm64)
+        uses: docker/build-push-action@v5
+        with:
+          context: mspr-cofrap/frontend
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/mspr-frontend:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/mspr-frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ──────────────────────────────────────────────
+  # JOB 2 — Déploiement sur le cluster K3s
+  # Runner self-hosted sur le control-plane :
+  # accès kubectl local, aucune IP publique requise
+  # ──────────────────────────────────────────────
+  deploy:
+    name: Deploy to K3s
+    runs-on: self-hosted
+    needs: build-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Vérifier accès cluster
+        run: kubectl get nodes
+
+      # ── Port-forward gateway OpenFaaS (loopback VM)
+      - name: Port-forward OpenFaaS gateway
+        run: |
+          kubectl port-forward svc/gateway -n openfaas 8080:8080 &
+          echo "PF_PID=$!" >> $GITHUB_ENV
+          sleep 5
+
+      # ── Login OpenFaaS
+      - name: Login OpenFaaS
+        run: |
+          FAAS_PASS=$(kubectl -n openfaas get secret basic-auth \
+            -o jsonpath="{.data.basic-auth-password}" | base64 -d)
+          faas-cli login \
+            --username admin \
+            --password "$FAAS_PASS" \
+            --gateway http://localhost:8080
+
+      # ── Secrets OpenFaaS (idempotent : create || update)
+      - name: Sync secrets OpenFaaS
+        run: |
+          GW="http://localhost:8080"
+
+          upsert_secret() {
+            local name="$1"
+            local value="$2"
+            printf '%s' "$value" | faas-cli secret create "$name" --gateway "$GW" 2>/dev/null \
+              || printf '%s' "$value" | faas-cli secret update "$name" --gateway "$GW"
+          }
+
+          upsert_secret db-host     "${{ secrets.DB_HOST }}"
+          upsert_secret db-user     "${{ secrets.DB_USER }}"
+          upsert_secret db-password "${{ secrets.DB_PASSWORD }}"
+          upsert_secret db-name     "${{ secrets.DB_NAME }}"
+          upsert_secret mfa-key     "${{ secrets.MFA_KEY }}"
+
+      # ── Déploiement des fonctions
+      - name: Deploy fonctions OpenFaaS
+        working-directory: mspr-cofrap/functions
+        run: |
+          faas-cli deploy \
+            -f stack.yaml \
+            --gateway http://localhost:8080
+
+      # ── Déploiement du frontend
+      - name: Apply manifests frontend
+        run: |
+          kubectl apply -f mspr-cofrap/k8s/frontend/ -n frontend
+          kubectl rollout restart deployment/mspr-frontend -n frontend
+          kubectl rollout status deployment/mspr-frontend -n frontend --timeout=3m
+
+      # ── Nettoyage port-forward
+      - name: Stop port-forward
+        if: always()
+        run: kill $PF_PID 2>/dev/null || true

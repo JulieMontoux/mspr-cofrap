@@ -5,6 +5,7 @@ import pyotp
 import qrcode
 import io
 import base64
+from cryptography.fernet import Fernet
 
 USERNAME_RE = re.compile(r'^[a-zA-Z0-9_-]{3,32}$')
 
@@ -48,6 +49,7 @@ def handle(event, context):
         db_user = read_secret("db-user")
         db_password = read_secret("db-password")
         db_name = read_secret("db-name")
+        mfa_key = read_secret("mfa-key").encode()
 
         conn = psycopg2.connect(
             host=db_host,
@@ -67,7 +69,10 @@ def handle(event, context):
             }
 
         totp_secret = pyotp.random_base32()
-        cur.execute("UPDATE users SET mfa = %s WHERE username = %s", (totp_secret, username))
+        fernet = Fernet(mfa_key)
+        encrypted_secret = fernet.encrypt(totp_secret.encode()).decode()
+
+        cur.execute("UPDATE users SET mfa = %s WHERE username = %s", (encrypted_secret, username))
         conn.commit()
 
         totp = pyotp.TOTP(totp_secret)
