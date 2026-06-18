@@ -114,7 +114,6 @@ export default function Register({ prefillUsername }) {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Username */}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="reg-username" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Nom d'utilisateur
@@ -134,7 +133,6 @@ export default function Register({ prefillUsername }) {
         <p className="text-xs text-slate-500">3–32 caractères : lettres, chiffres, tiret ou underscore.</p>
       </div>
 
-      {/* Submit */}
       <button
         onClick={handleRegister}
         disabled={loading}
@@ -152,7 +150,6 @@ export default function Register({ prefillUsername }) {
         )}
       </button>
 
-      {/* Error */}
       {error && (
         <div role="alert" className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm animate-fade-in">
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true">
@@ -162,7 +159,6 @@ export default function Register({ prefillUsername }) {
         </div>
       )}
 
-      {/* Password result */}
       {password && (
         <div className="flex flex-col gap-2 p-4 rounded-xl bg-white/5 border border-white/10 animate-fade-in">
           <div className="flex items-center justify-between gap-2">
@@ -183,7 +179,6 @@ export default function Register({ prefillUsername }) {
         </div>
       )}
 
-      {/* QR codes */}
       {(passwordQr || qrCode) && (
         <div className="flex flex-col gap-4 animate-fade-in">
           {passwordQr && (

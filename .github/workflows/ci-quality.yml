@@ -1,0 +1,70 @@
+name: CI Quality — develop
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  lint-python:
+    name: Lint Python (flake8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Lint handlers
+        run: |
+          flake8 functions/authenticate/handler.py \
+                 functions/generate-2fa/handler.py \
+                 functions/generate-password/handler.py \
+            --max-line-length=100 \
+            --extend-ignore=E501
+
+  lint-frontend:
+    name: Lint Frontend (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+
+  test-python:
+    name: Tests Python (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          pip install pytest bcrypt pyotp cryptography psycopg2-binary qrcode[pil]
+
+      - name: Run tests
+        run: |
+          for func in authenticate generate-2fa generate-password; do
+            echo "=== $func ==="
+            (cd functions/$func && python -m pytest handler_test.py -v --tb=short)
+          done

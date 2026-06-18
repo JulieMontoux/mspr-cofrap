@@ -71,10 +71,8 @@ def handle(event, context):
             }
 
         stored_hash, mfa_secret, gendate, expired, failed_attempts, locked_until = user
-        failed_attempts = failed_attempts or 0
         now = int(time.time())
 
-        # Account lock
         if locked_until and now < locked_until:
             conn.close()
             return {
@@ -83,7 +81,6 @@ def handle(event, context):
                 "body": json.dumps({"error": "account temporarily locked"})
             }
 
-        # Expired flag
         if expired:
             conn.close()
             return {
@@ -96,7 +93,6 @@ def handle(event, context):
                 })
             }
 
-        # 6-month expiration
         if gendate and now - gendate > 60 * 60 * 24 * 180:
             cur.execute("UPDATE users SET expired = true WHERE username = %s", (username,))
             conn.commit()
@@ -111,7 +107,6 @@ def handle(event, context):
                 })
             }
 
-        # Incomplete registration: 2FA not set up yet
         if not mfa_secret:
             conn.close()
             return {
@@ -124,18 +119,12 @@ def handle(event, context):
                 })
             }
 
-        # Authentication checks
-        auth_failed = False
+        pwd_ok = bcrypt.checkpw(password.encode(), stored_hash.encode())
+        if pwd_ok:
+            decrypted = Fernet(mfa_key).decrypt(mfa_secret.encode()).decode()
+            pwd_ok = pyotp.TOTP(decrypted).verify(otp)
 
-        if not bcrypt.checkpw(password.encode(), stored_hash.encode()):
-            auth_failed = True
-        else:
-            fernet = Fernet(mfa_key)
-            decrypted_secret = fernet.decrypt(mfa_secret.encode()).decode()
-            if not pyotp.TOTP(decrypted_secret).verify(otp):
-                auth_failed = True
-
-        if auth_failed:
+        if not pwd_ok:
             new_attempts = failed_attempts + 1
 
             if new_attempts >= 5:
@@ -158,7 +147,6 @@ def handle(event, context):
                 "body": json.dumps({"error": "invalid credentials"})
             }
 
-        # Success — reset attempts
         cur.execute(
             "UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE username = %s",
             (username,)

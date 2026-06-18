@@ -19,20 +19,17 @@ CORS_HEADERS = {
 
 
 def generate_strong_password(length=24):
-    uppercase = string.ascii_uppercase
-    lowercase = string.ascii_lowercase
-    digits = string.digits
     special = "!@#$%^&*()-_=+[]{}|;:,.<>?"
-    all_chars = uppercase + lowercase + digits + special
-    password = [
-        secrets.choice(uppercase),
-        secrets.choice(lowercase),
-        secrets.choice(digits),
-        secrets.choice(special)
+    pool = string.ascii_letters + string.digits + special
+    pwd = [
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.digits),
+        secrets.choice(special),
+        *[secrets.choice(pool) for _ in range(length - 4)]
     ]
-    password += [secrets.choice(all_chars) for _ in range(length - 4)]
-    secrets.SystemRandom().shuffle(password)
-    return ''.join(password)
+    secrets.SystemRandom().shuffle(pwd)
+    return ''.join(pwd)
 
 
 def read_secret(secret_name):

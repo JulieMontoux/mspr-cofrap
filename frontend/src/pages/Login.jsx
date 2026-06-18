@@ -2,6 +2,14 @@ import { useState } from "react";
 import { api } from "../api";
 
 const CONFETTI_COLORS = ["#f472b6", "#818cf8", "#34d399", "#fbbf24", "#22d3ee", "#f87171"];
+const CONFETTI_PIECES = Array.from({ length: 18 }, (_, i) => ({
+  id: i,
+  left: `${Math.random() * 100}%`,
+  top: `${Math.random() * 20}%`,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  delay: `${Math.random() * 0.8}s`,
+  duration: `${0.9 + Math.random() * 0.8}s`,
+}));
 const MESSAGES = [
   "Accès accordé, le cluster vous salue bien.",
   "Bravo. K3s est impressionné. (lui au moins)",
@@ -11,19 +19,18 @@ const MESSAGES = [
 ];
 
 function Confetti() {
-  const pieces = Array.from({ length: 18 }, (_, i) => i);
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      {pieces.map((i) => (
+      {CONFETTI_PIECES.map((p) => (
         <span
-          key={i}
+          key={p.id}
           className="absolute w-2 h-2 rounded-sm animate-confetti"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 20}%`,
-            backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-            animationDelay: `${Math.random() * 0.8}s`,
-            animationDuration: `${0.9 + Math.random() * 0.8}s`,
+            left: p.left,
+            top: p.top,
+            backgroundColor: p.color,
+            animationDelay: p.delay,
+            animationDuration: p.duration,
           }}
         />
       ))}
@@ -159,7 +166,6 @@ export default function Login({ onRenew }) {
     <>
     {showEgg && <EasterEgg onClose={() => setShowEgg(false)} />}
     <div className="flex flex-col gap-5">
-      {/* Username */}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="login-username" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Nom d'utilisateur
@@ -178,7 +184,6 @@ export default function Login({ onRenew }) {
         />
       </div>
 
-      {/* Password */}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="login-password" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Mot de passe
@@ -206,7 +211,6 @@ export default function Login({ onRenew }) {
         </div>
       </div>
 
-      {/* OTP */}
       <div className="flex flex-col gap-1.5">
         <label htmlFor="login-otp" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Code OTP
@@ -227,7 +231,6 @@ export default function Login({ onRenew }) {
         <p className="text-xs text-slate-500">Code à 6 chiffres depuis votre application 2FA.</p>
       </div>
 
-      {/* Submit */}
       <button
         onClick={handleLogin}
         disabled={loading}
@@ -245,7 +248,6 @@ export default function Login({ onRenew }) {
         )}
       </button>
 
-      {/* Feedback */}
       {message && (
         <div role="status" className="flex items-center gap-2 p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-300 text-sm animate-fade-in">
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 shrink-0" aria-hidden="true">
