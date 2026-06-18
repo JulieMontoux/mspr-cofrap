@@ -45,10 +45,11 @@ function EasterEgg({ onClose }) {
       >
         <Confetti />
 
-        {/* dancing emoji */}
-        <div className="text-7xl mb-4 animate-wiggle select-none" role="img" aria-label="danse">
-          🕺
-        </div>
+        <img
+          src="https://media3.giphy.com/media/pwQdvTbFhds3e/giphy.gif"
+          alt="celebration"
+          className="w-28 h-28 mx-auto mb-4 rounded-xl object-cover"
+        />
 
         <h2 className="text-xl font-bold text-white mb-1">
           Accès accordé !
