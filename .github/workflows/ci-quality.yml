@@ -63,4 +63,8 @@ jobs:
           pip install pytest bcrypt pyotp cryptography psycopg2-binary qrcode[pil]
 
       - name: Run tests
-        run: pytest functions/ -v --tb=short
+        run: |
+          for func in authenticate generate-2fa generate-password; do
+            echo "=== $func ==="
+            (cd functions/$func && python -m pytest handler_test.py -v --tb=short)
+          done
