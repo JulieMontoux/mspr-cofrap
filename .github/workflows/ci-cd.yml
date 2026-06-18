@@ -103,45 +103,28 @@ jobs:
           echo "PF_PID=$!" >> $GITHUB_ENV
           sleep 5
 
-      # ── Login OpenFaaS
-      - name: Login OpenFaaS
-        run: |
-          FAAS_PASS=$(kubectl -n openfaas get secret basic-auth \
-            -o jsonpath="{.data.basic-auth-password}" | base64 -d)
-          faas-cli login \
-            --username admin \
-            --password "$FAAS_PASS" \
-            --gateway http://localhost:8080
-
-      # ── Secrets OpenFaaS (idempotent : create || update)
-      - name: Sync secrets OpenFaaS
+      # ── Login + secrets + deploy dans un seul shell (credentials persistent)
+      - name: Deploy fonctions OpenFaaS
+        working-directory: functions
         run: |
           GW="http://localhost:8080"
+          FAAS_PASS=$(kubectl -n openfaas get secret basic-auth \
+            -o jsonpath="{.data.basic-auth-password}" | base64 -d)
+
+          faas-cli login --username admin --password "$FAAS_PASS" --gateway "$GW"
 
           upsert_secret() {
-            local name="$1"
-            local value="$2"
-            printf '%s' "$value" | faas-cli secret create "$name" --gateway "$GW" 2>/dev/null \
-              || printf '%s' "$value" | faas-cli secret update "$name" --gateway "$GW"
+            printf '%s' "$2" | faas-cli secret create "$1" --gateway "$GW" 2>/dev/null \
+              || printf '%s' "$2" | faas-cli secret update "$1" --gateway "$GW"
           }
-
           upsert_secret db-host     "${{ secrets.DB_HOST }}"
           upsert_secret db-user     "${{ secrets.DB_USER }}"
           upsert_secret db-password "${{ secrets.DB_PASSWORD }}"
           upsert_secret db-name     "${{ secrets.DB_NAME }}"
           upsert_secret mfa-key     "${{ secrets.MFA_KEY }}"
 
-      # ── Déploiement des fonctions
-      - name: Pull template python3-http
-        working-directory: functions
-        run: faas-cli template store pull python3-http
-
-      - name: Deploy fonctions OpenFaaS
-        working-directory: functions
-        run: |
-          faas-cli deploy \
-            -f stack.yaml \
-            --gateway http://localhost:8080
+          faas-cli template store pull python3-http
+          faas-cli deploy -f stack.yaml --gateway "$GW"
 
       # ── Déploiement du frontend
       - name: Apply manifests frontend
