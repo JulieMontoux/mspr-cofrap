@@ -90,6 +90,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup KUBECONFIG
+        run: echo "KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> $GITHUB_ENV
+
       - name: Vérifier accès cluster
         run: kubectl get nodes
 
