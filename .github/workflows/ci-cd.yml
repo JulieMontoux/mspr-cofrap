@@ -132,6 +132,10 @@ jobs:
           upsert_secret mfa-key     "${{ secrets.MFA_KEY }}"
 
       # ── Déploiement des fonctions
+      - name: Pull template python3-http
+        working-directory: functions
+        run: faas-cli template store pull python3-http
+
       - name: Deploy fonctions OpenFaaS
         working-directory: functions
         run: |
