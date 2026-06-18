@@ -49,8 +49,10 @@ class TestHandle(unittest.TestCase):
         self.assertIn("user not found", json.loads(res["body"])["error"])
 
     @patch.object(handler, "read_secret", return_value="fake")
+    @patch.object(handler, "Fernet")
     @patch.object(handler, "psycopg2")
-    def test_success_returns_200_with_username_and_qr(self, mock_pg, _):
+    def test_success_returns_200_with_username_and_qr(self, mock_pg, mock_fernet, _):
+        mock_fernet.return_value.encrypt.return_value = b"ENCRYPTEDSECRET"
         mock_cur = MagicMock()
         mock_cur.fetchone.return_value = (1,)
         mock_pg.connect.return_value.cursor.return_value = mock_cur
@@ -61,8 +63,10 @@ class TestHandle(unittest.TestCase):
         self.assertIn("qr_code_base64", body)
 
     @patch.object(handler, "read_secret", return_value="fake")
+    @patch.object(handler, "Fernet")
     @patch.object(handler, "psycopg2")
-    def test_qr_code_is_non_empty_base64(self, mock_pg, _):
+    def test_qr_code_is_non_empty_base64(self, mock_pg, mock_fernet, _):
+        mock_fernet.return_value.encrypt.return_value = b"ENCRYPTEDSECRET"
         mock_cur = MagicMock()
         mock_cur.fetchone.return_value = (1,)
         mock_pg.connect.return_value.cursor.return_value = mock_cur
@@ -71,8 +75,10 @@ class TestHandle(unittest.TestCase):
         self.assertGreater(len(body["qr_code_base64"]), 0)
 
     @patch.object(handler, "read_secret", return_value="fake")
+    @patch.object(handler, "Fernet")
     @patch.object(handler, "psycopg2")
-    def test_totp_secret_saved_to_db(self, mock_pg, _):
+    def test_totp_secret_saved_to_db(self, mock_pg, mock_fernet, _):
+        mock_fernet.return_value.encrypt.return_value = b"ENCRYPTEDSECRET"
         mock_cur = MagicMock()
         mock_cur.fetchone.return_value = (1,)
         mock_pg.connect.return_value.cursor.return_value = mock_cur
